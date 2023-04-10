@@ -12,7 +12,8 @@ class FollowingListEndpoint(Resource):
     
     def get(self):
         # return all of the "following" records that the current user is following
-        return Response(json.dumps([]), mimetype="application/json", status=200)
+        followings = Following.query.filter_by(user_id=self.current_user.id).all()
+        return Response(json.dumps([f.to_dict_following() for f in followings]), mimetype="application/json", status=200)
 
     def post(self):
         # create a new "following" record based on the data posted in the body 
@@ -28,9 +29,6 @@ class FollowingDetailEndpoint(Resource):
         # delete "following" record where "id"=id
         print(id)
         return Response(json.dumps({}), mimetype="application/json", status=200)
-
-
-
 
 def initialize_routes(api):
     api.add_resource(
