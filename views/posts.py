@@ -30,8 +30,20 @@ class PostListEndpoint(Resource):
     def post(self):
         # create a new post based on the data posted in the body 
         body = request.get_json()
-        print(body)  
-        return Response(json.dumps({}), mimetype="application/json", status=201)
+        
+        if body.get("image_url") == None or len(body) == 0:
+            return Response(json.dumps({ "msg": "image_url is required" }), mimetype="application/json", status=400)    
+        
+        new_post = Post(
+            image_url=body.get("image_url"),
+            user_id=self.current_user.id,
+            caption=body.get("caption") if body.get("caption") != None else None,
+            alt_text=body.get("alt_text") if body.get("alt_text") != None else None
+        )
+        db.session.add(new_post)
+        db.session.commit()
+
+        return Response(json.dumps(new_post.to_dict()), mimetype="application/json", status=201)
         
 class PostDetailEndpoint(Resource):
 
@@ -42,7 +54,7 @@ class PostDetailEndpoint(Resource):
     def patch(self, id):
         # update post based on the data posted in the body 
         body = request.get_json()
-        print(body)       
+        print(body)
         return Response(json.dumps({}), mimetype="application/json", status=200)
 
 
@@ -55,11 +67,10 @@ class PostDetailEndpoint(Resource):
         # get the post based on the id
         error_msg = { "msg": "post not found or unauthorized access" }
         post = Post.query.get(id)
-        if post == None:
+        authorized_users = get_authorized_user_ids(current_user=self.current_user)
+        if post == None or post.user_id not in authorized_users:
             return Response(json.dumps(error_msg), mimetype="application/json", status=404)
-        elif post.user_id != self.current_user.id:
-            return Response(json.dumps(error_msg), mimetype="application/json", status=404)
-
+            
         return Response(json.dumps(post.to_dict()), mimetype="application/json", status=200)
 
 def initialize_routes(api):
