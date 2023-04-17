@@ -33,6 +33,8 @@ def _zip(columns, rows, single_object=True):
     else:
         return results
 
+def get_post_that_user_cannot_edit_delete(user_id):
+    return get_post_that_user_cannot_access(user_id)
 
 def get_user_12():
     with db.connect() as conn:
