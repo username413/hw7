@@ -16,8 +16,26 @@ class BookmarksListEndpoint(Resource):
     def post(self):
         # create a new "bookmark" based on the data posted in the body 
         body = request.get_json()
-        print(body)
-        return Response(json.dumps({}), mimetype="application/json", status=201)
+        post_id = body.get("post_id")
+        if post_id == None:
+            return Response(json.dumps({ "msg": "post_id is required" }), mimetype="application/json", status=400)
+        try:
+            post_id = int(post_id)
+        except Exception as e:
+            return Response(json.dumps({ "msg": f"invalid input: {e}" }), mimetype="application/json", status=400)
+        
+        if Bookmark.query.filter_by(user_id=self.current_user.id, post_id=post_id).first() != None:
+            return Response(json.dumps({ "msg": "already bookmarked" }), mimetype="application/json", status=400)
+
+        post = Bookmark.query.get(post_id)
+        if post == None:
+            return Response(json.dumps({ "msg": "post not found" }), mimetype="application/json", status=404)
+        
+        bookmark = Bookmark(self.current_user.id, post_id)
+        db.session.add(bookmark)
+        db.session.commit()
+        
+        return Response(json.dumps(bookmark.to_dict()), mimetype="application/json", status=201)
 
 class BookmarkDetailEndpoint(Resource):
 
@@ -26,8 +44,18 @@ class BookmarkDetailEndpoint(Resource):
     
     def delete(self, id):
         # delete "bookmark" record where "id"=id
-        print(id)
-        return Response(json.dumps({}), mimetype="application/json", status=200)
+        try:
+            delete_id = int(id)
+        except Exception as e:
+            return Response(json.dumps({ "msg": f"invalid input: {e}" }), mimetype="application/json", status=400)
+        
+        bookmark = Bookmark.query.get(delete_id)
+        if bookmark == None:
+            return Response(json.dumps({ "msg": "bookmark not found" }), mimetype="application/json", status=404)
+        
+        db.session.delete(bookmark)
+        db.session.commit()
+        return Response(json.dumps({ "msg": "bookmark deleted." }), mimetype="application/json", status=200)
 
 
 

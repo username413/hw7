@@ -18,8 +18,24 @@ class FollowingListEndpoint(Resource):
     def post(self):
         # create a new "following" record based on the data posted in the body 
         body = request.get_json()
-        print(body)
-        return Response(json.dumps({}), mimetype="application/json", status=201)
+        if len(body) == 0 or body.get("user_id") == None:
+            return Response(json.dumps({ "msg": "invalid input" }), mimetype="application/json", status=400)
+        user_id = body.get("user_id")
+        try:
+            user_id = int(user_id)
+        except Exception as e:
+            return Response(json.dumps({ "msg": f"invalid input: {e}" }), mimetype="application/json", status=400)
+        
+        user = User.query.get(user_id)
+        if user == None:
+            return Response(json.dumps({ "msg": "user not found" }), mimetype="application/json", status=404)
+        if Following.query.filter_by(user_id=self.current_user.id, following_id=user_id).first() != None:
+            return Response(json.dumps({ "msg": "user already followed." }), mimetype="application/json", status=400)
+
+        follow = Following(self.current_user.id, user_id)
+        db.session.add(follow)
+        db.session.commit()
+        return Response(json.dumps(follow.to_dict_following()), mimetype="application/json", status=201)
 
 class FollowingDetailEndpoint(Resource):
     def __init__(self, current_user):
@@ -27,8 +43,18 @@ class FollowingDetailEndpoint(Resource):
     
     def delete(self, id):
         # delete "following" record where "id"=id
-        print(id)
-        return Response(json.dumps({}), mimetype="application/json", status=200)
+        try:
+            delete_id = int(id)
+        except Exception as e:
+            return Response(json.dumps({ "msg": f"invalid input: {e}" }), mimetype="application/json", status=400)
+        
+        unfollow = Following.query.get(delete_id)
+        if unfollow == None:
+            return Response(json.dumps({ "msg": "following not found" }), mimetype="application/json", status=404)
+        
+        db.session.delete(unfollow)
+        db.session.commit()
+        return Response(json.dumps({ "msg": "unfollowed successfully." }), mimetype="application/json", status=200)
 
 def initialize_routes(api):
     api.add_resource(
