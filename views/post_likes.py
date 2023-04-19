@@ -1,6 +1,7 @@
 from flask import Response, request
 from flask_restful import Resource
-from models import LikePost, db
+from models import LikePost, db, Post
+from views import get_authorized_user_ids
 import json
 
 class PostLikesListEndpoint(Resource):
@@ -19,7 +20,12 @@ class PostLikesListEndpoint(Resource):
         except Exception as e:
             return Response(json.dumps({ "msg": f"invalid input {e}"}), mimetype="application/json", status=400)
 
-        if LikePost.query.filter_by(user_id=self.current_user.id, post_id=post_id).first() != None:
+        checks = LikePost.query.filter_by(user_id=self.current_user.id, post_id=post_id).first()
+        if checks != None:
+            post = Post.query.get(checks.post_id)
+            authorized_users = get_authorized_user_ids(current_user=self.current_user)
+            if post != None and post.user_id not in authorized_users:
+                return Response(json.dumps({ "msg": "unauthorized access" }), mimetype="application/json", status=404)
             return Response(json.dumps({ "msg": "already liked" }), mimetype="application/json", status=400)
         
         post = LikePost.query.get(post_id)

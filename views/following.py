@@ -2,6 +2,7 @@ from flask import Response, request
 from flask_restful import Resource
 from models import Following, User, db
 import json
+from views import get_authorized_user_ids
 
 def get_path():
     return request.host_url + 'api/posts/'
@@ -29,7 +30,9 @@ class FollowingListEndpoint(Resource):
         user = User.query.get(user_id)
         if user == None:
             return Response(json.dumps({ "msg": "user not found" }), mimetype="application/json", status=404)
-        if Following.query.filter_by(user_id=self.current_user.id, following_id=user_id).first() != None:
+
+        checks = Following.query.filter_by(user_id=self.current_user.id, following_id=user_id).first()
+        if checks != None:
             return Response(json.dumps({ "msg": "user already followed." }), mimetype="application/json", status=400)
 
         follow = Following(self.current_user.id, user_id)
@@ -49,7 +52,8 @@ class FollowingDetailEndpoint(Resource):
             return Response(json.dumps({ "msg": f"invalid input: {e}" }), mimetype="application/json", status=400)
         
         unfollow = Following.query.get(delete_id)
-        if unfollow == None:
+        followings = Following.query.filter_by(user_id=self.current_user.id).all()
+        if unfollow not in followings or unfollow == None:
             return Response(json.dumps({ "msg": "following not found" }), mimetype="application/json", status=404)
         
         db.session.delete(unfollow)
