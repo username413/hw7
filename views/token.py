@@ -11,14 +11,20 @@ class AccessTokenEndpoint(Resource):
     # create_access_token() function is used to actually generate the JWT.
     def post(self):
         body = request.get_json() or {}
-        print(body)
-        '''
-        if a matching user is found in the DB, encode the user's id in the JWT
-        access and refresh token as follows:
-        access_token = flask_jwt_extended.create_access_token(identity=user.id)
-        refresh_token = flask_jwt_extended.create_refresh_token(identity=user.id)
-        '''
-        return 'Implement me!'
+        un = body.get("username")
+        pw = body.get("password")
+        if len(body) == 0 or un == None or pw == None:
+            return Response(json.dumps({ "msg": "invalid input" }), mimetype="application/json", status=401)
+        
+        user = User.query.filter_by(username=un).one_or_none()
+        if user == None:
+            return Response(json.dumps({ "msg": "user not found" }), mimetype="application/json", status=401)
+        if user.check_password(pw):
+            access_token = flask_jwt_extended.create_access_token(identity=user.id)
+            refresh_token = flask_jwt_extended.create_refresh_token(identity=user.id)
+            return Response(json.dumps({ "access_token": access_token, "refresh_token": refresh_token }), mimetype="application/json", status=200)
+        else:
+            return Response(json.dumps({ "msg": "wrong password" }), mimetype="application/json", status=401)
 
 
 class RefreshTokenEndpoint(Resource):
